@@ -22,7 +22,7 @@ const userSchema = new schema({
     plan: {
         type: String,
         enum: ["free", "pro", "enterprise"],
-        default: free
+        default: "free"
     }
 
 
