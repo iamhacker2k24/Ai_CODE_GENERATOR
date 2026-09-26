@@ -7,6 +7,6 @@ const { generateWebsite, getWebsiteByid } = require("../controllers/websiteContr
 const websiterouts = express.Router();
 
 websiterouts.post("/generatewebsite", isAuth,generateWebsite);
-websiterouts.get("/get-by-id",isAuth,getWebsiteByid)
+websiterouts.get("/get-by-id/:id",getWebsiteByid)
 
 module.exports = websiterouts;

@@ -254,22 +254,23 @@ const generateWebsite = async (req, res) => {
 
 
 const getWebsiteByid = async (req, res) => {
+
+    const id = req.params.id
     try {
         const website = await Website.findOne({
-            _id: parms.id,
-            user: req.user._id
+            _id: id,
+            // user: req.user._id
         })
+        console.log(website)
         if (!website) {
             return res.status(400).json({ msg: "website not found " })
         }
+        return res.status(200).json(website)
     } catch (error) {
         return res.status(500).json({
-            msg: "eroror from website getting "
+            msg: error.message
         })
     }
 }
-
-
-
 
 module.exports = { generateWebsite, getWebsiteByid }

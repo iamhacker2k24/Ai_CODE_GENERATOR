@@ -12,6 +12,7 @@ import { useSelector } from "react-redux";
 
 import Dashboard from "./Pages/Dashboard";
 import Generate from "./Pages/Generate";
+import Editor from "./Pages/Editor";
 
 const App = () => {
   // Get current logged-in user
@@ -23,13 +24,11 @@ const App = () => {
     <BrowserRouter>
       <Routes>
 
-        {/* ================= HOME ================= */}
         <Route
           path="/"
           element={<Home />}
         />
 
-        {/* ================= DASHBOARD ================= */}
         <Route
           path="/dashboard"
           element={
@@ -41,7 +40,6 @@ const App = () => {
           }
         />
 
-        {/* ================= GENERATE ================= */}
         <Route
           path="/generate"
           element={
@@ -52,8 +50,17 @@ const App = () => {
             )
           }
         />
+         <Route
+          path="/editor/:id"
+          element={
+            userData ? (
+              <Editor/>
+            ) : (
+              <Home/>
+            )
+          }
+        />
 
-        {/* ================= UNKNOWN ROUTE ================= */}
         <Route
           path="*"
           element={<Navigate to="/" replace />}
