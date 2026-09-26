@@ -1,54 +1,94 @@
-const moongose = require("moongose");
-const schema = moongose.Schema
+const mongoose = require("mongoose");
 
+const { Schema } = mongoose;
 
-const messageSchema = new schema({
+const messageSchema = new Schema(
+  {
     role: {
-        type: String,
-        enum: ["ai", "user"],
-        required: true
+      type: String,
+      enum: ["user", "ai"],
+      required: true,
     },
+
     content: {
-        type: String,
-        required: true
-    }
-},
-    { timestamps: true })
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 
 
-const websiteSchema = new moongose.schema({
+const websiteSchema = new Schema(
+  {
+    
     user: {
-        type: schema.Types.objectId,
-        ref: "User",
-        required: true
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
-    tittle: {
-        type: String,
-        default: "Untitled Website"
+
+   
+    title: {
+      type: String,
+      required: true,
+      default: "Untitled Website",
+      trim: true,
+      maxlength: 150,
     },
+
+   
     latestCode: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
-    converstation: [
-        messageSchema
-    ],
+
+
+    conversation: {
+      type: [messageSchema],
+      default: [],
+    },
+
+  
     deployed: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
+
+ 
     deployUrl: {
-        type: String
+      type: String,
+      default: null,
+      trim: true,
     },
+
+  
     slug: {
-        type: String,
-        unique: true
-    }
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true,
+      trim: true,
+      lowercase: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-}, {
-    timestamps: true
-})
 
-const Website = moongose.model("website", websiteSchema)
-export default Website;
+
+const Website = mongoose.model("Website", websiteSchema);
+
+console.log("Website model loaded");
+console.log("Website.create:", typeof Website.create);
+console.log("Website.findOne:", typeof Website.findOne);
+
+
+module.exports = Website;

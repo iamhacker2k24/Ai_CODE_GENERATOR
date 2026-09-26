@@ -1,21 +1,4 @@
-// fetch('https://openrouter.ai/api/v1/chat/completions', {
-//   method: 'POST',
-//   headers: {
-//     Authorization: 'Bearer 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',
-//     'HTTP-Referer': '<YOUR_SITE_URL>',
-//     'X-Title': '<YOUR_SITE_NAME>',
-//     'Content-Type': 'application/json',
-//   },
-//   body: JSON.stringify({
-//     model: 'openai/gpt-4o',
-//     messages: [
-//       {
-//         role: 'user',
-//         content: 'What is the meaning of life?',
-//       },
-//     ],
-//   }),
-// });}
+const extractJSON = require("../utlis/extractJson");
 
 
 const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions"
@@ -24,6 +7,8 @@ const model = "deepseek/deepseek-chat"
 
 
 const genarateResponse = async (prompt) => {
+
+    console.log("working")
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -37,7 +22,7 @@ const genarateResponse = async (prompt) => {
             messages: [{ role: "system", content: "must return ans in json formate" },
             {
                 role: 'user',
-                content: 'What is the meaning of life?',
+                content: prompt,
             },
             ],
             temperature: 0.2
@@ -48,9 +33,17 @@ const genarateResponse = async (prompt) => {
         const err = await res.text();
         throw new Error(err)
     }
-    console.log(await res.text())
+    const data = await res.json()
+    console.log(data)
+    const response = data.choices[0].message.content
+    // console.log(response)
+    const jsonres = await extractJSON(response)
+    // console.log("josn came here ")
+    console.log(jsonres)
+    return jsonres
+
 }
 
-genarateResponse();
+// genarateResponse("return  a working calculator website html code i need just code part no other text ok  ");
 
-
+module.exports = genarateResponse;

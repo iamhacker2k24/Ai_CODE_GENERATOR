@@ -2,28 +2,38 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 function Generate() {
   const navigate = useNavigate();
 
   const [description, setDescription] = useState("");
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     console.log("Website Description:", description);
 
-    // Later you can send this to your backend / AI API
+    try {
+      const prompt=description
+      const result = await axios.post(
+        "http://localhost:3000/api/website/generateWebsite",
+        {
+          prompt,
+        },
+        { withCredentials: true },
+      );
+      console.log(result);
+    } catch (error) {
+      console.log(error.message);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-
       {/* ================= HEADER ================= */}
       <div className="sticky top-0 z-40 backdrop-blur-xl bg-black/50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-
           {/* LEFT SIDE */}
           <div className="flex items-center gap-4">
-
             <button
               onClick={() => navigate("/dashboard")}
               className="p-2 rounded-lg hover:bg-white/10 transition"
@@ -35,15 +45,12 @@ function Generate() {
               Genweb
               <span className="text-zinc-400">.ai</span>
             </h1>
-
           </div>
-
         </div>
       </div>
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="max-w-6xl mx-auto px-6 py-16">
-
         {/* ================= HERO ================= */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -58,8 +65,8 @@ function Generate() {
           </h1>
 
           <p className="text-zinc-400 max-w-2xl mx-auto">
-            This process may take several minutes. genweb.ai focuses on
-            quality, not shortcuts.
+            This process may take several minutes. genweb.ai focuses on quality,
+            not shortcuts.
           </p>
         </motion.div>
 
@@ -70,12 +77,9 @@ function Generate() {
           transition={{ delay: 0.15 }}
           className="mb-14"
         >
-          <h1 className="text-xl font-semibold mb-2">
-            Describe your website
-          </h1>
+          <h1 className="text-xl font-semibold mb-2">Describe your website</h1>
 
           <div className="relative">
-
             <textarea
               name="description"
               id="description"
@@ -89,13 +93,11 @@ function Generate() {
             <div className="absolute bottom-4 right-5 text-xs text-zinc-500">
               {description.length} characters
             </div>
-
           </div>
         </motion.div>
 
         {/* ================= GENERATE BUTTON ================= */}
         <div className="flex justify-center">
-
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.96 }}
@@ -105,9 +107,7 @@ function Generate() {
           >
             Generate Website
           </motion.button>
-
         </div>
-
       </div>
     </div>
 

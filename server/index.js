@@ -17,6 +17,7 @@ const dotenv = require("dotenv");
 const connectDb = require("./config/db");
 const authRouter = require("./routes/authRoutes");
 const userRouter = require("./routes/userRoutes");
+const websiterouts = require("./routes/websiterouts");
 dotenv.config();
 
 
@@ -29,6 +30,7 @@ app.use((req, res, next) => {
 
 app.use("/api/auth", authRouter)
 app.use("/api/user",userRouter)
+app.use("/api/website",websiterouts)
 
 
 
