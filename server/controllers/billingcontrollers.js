@@ -1,6 +1,7 @@
 const { PLANS } = require("../config/plan");
 
 const billing = async (rq, res) => {
+    console.log("billing page working........")
     try {
         const { panType } = rwq.body
         const userId = req.eser._id;
@@ -39,7 +40,9 @@ const billing = async (rq, res) => {
 
     } catch (error) {
         return res.status(500).json({
-            msg: `biling error `
+            msg: `biling error ${error.message} `
         })
     }
 }
+
+module.exports = billing

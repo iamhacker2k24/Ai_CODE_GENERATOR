@@ -2,10 +2,11 @@ const express = require("express");
 
 const isAuth = require("../middleWare/isAuth");
 const getCurrentuser = require("../controllers/userControllers");
+const billing = require("../controllers/billingcontrollers");
 
 
-const userRouter = express.Router();
+const billingRouter = express.Router();
 
-userRouter.get("/me", isAuth, getCurrentuser);
+billingRouter.post("/billing", billing);
 
-module.exports = userRouter;
+module.exports = billingRouter;

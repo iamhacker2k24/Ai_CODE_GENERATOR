@@ -13,6 +13,7 @@ import { useSelector } from "react-redux";
 import Dashboard from "./Pages/Dashboard";
 import Generate from "./Pages/Generate";
 import Editor from "./Pages/Editor";
+import Pricing from "./Pages/pricing";
 
 const App = () => {
   // Get current logged-in user
@@ -48,6 +49,12 @@ const App = () => {
             ) : (
               <Home/>
             )
+          }
+        />
+        <Route
+          path="/pricing"
+          element={
+           <Pricing/>
           }
         />
          <Route
