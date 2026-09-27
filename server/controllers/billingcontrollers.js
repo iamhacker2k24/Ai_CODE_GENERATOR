@@ -1,11 +1,15 @@
-const { PLANS } = require("../config/plan");
+const  PLANS  = require("../config/plan");
 
-const billing = async (rq, res) => {
+const billing = async (req, res) => {
     console.log("billing page working........")
+    // console.log(PLANS.pro)
     try {
-        const { panType } = rwq.body
-        const userId = req.eser._id;
-        const plan = PLANS[planType]
+        const { planType } = req.body
+        //  console.log(req.user)
+        // const userId = req.user._id;
+        console.log(planType)
+        const plan = PLANS.planType
+        // console.log(plan)
         if (!plan || plan.price == 0) {
             return res.status(400).json({
                 msg: "Invaild paid plan"
@@ -27,7 +31,7 @@ const billing = async (rq, res) => {
                 }
             ],
             metadata: {
-                userId,
+                // userId,
                 credits: plan.credits,
                 plan: plan.plan
             }
@@ -40,7 +44,8 @@ const billing = async (rq, res) => {
 
     } catch (error) {
         return res.status(500).json({
-            msg: `biling error ${error.message} `
+
+            msg: `biling error => ${error.message} `
         })
     }
 }

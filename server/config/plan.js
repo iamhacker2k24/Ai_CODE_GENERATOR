@@ -1,4 +1,4 @@
- const PLANS = {
+const PLANS = {
     free: {
         price: 0,
         credits: 100,
@@ -18,4 +18,4 @@
 };
 
 
-module.exports=PLANS;
+module.exports = PLANS;
