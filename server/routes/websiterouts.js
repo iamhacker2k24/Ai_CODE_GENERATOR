@@ -6,10 +6,11 @@ const { generateWebsite, getWebsiteByid, getAll, changes } = require("../control
 
 const websiterouts = express.Router();
 
-websiterouts.post("/generatewebsite", isAuth,generateWebsite);
-websiterouts.get("/get-by-id/:id",getWebsiteByid)
-websiterouts.post("/update/:id",changes)
-websiterouts.get("/getAll",getAll)
+websiterouts.post("/generatewebsite", isAuth, generateWebsite);
+websiterouts.get("/get-by-id/:id", getWebsiteByid)
+websiterouts.post("/update/:id", changes)
+websiterouts.get("/getAll", isAuth, getAll)
+
 
 
 module.exports = websiterouts;

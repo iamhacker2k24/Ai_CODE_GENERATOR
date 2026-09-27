@@ -25,7 +25,7 @@ const messageSchema = new Schema(
 
 const websiteSchema = new Schema(
   {
-    
+
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -33,7 +33,7 @@ const websiteSchema = new Schema(
       index: true,
     },
 
-   
+
     title: {
       type: String,
       required: true,
@@ -42,7 +42,7 @@ const websiteSchema = new Schema(
       maxlength: 150,
     },
 
-   
+
     latestCode: {
       type: String,
       required: true,
@@ -54,20 +54,18 @@ const websiteSchema = new Schema(
       default: [],
     },
 
-  
+
     deployed: {
       type: Boolean,
       default: false,
     },
 
- 
+
     deployUrl: {
       type: String,
       default: null,
       trim: true,
     },
-
-  
     slug: {
       type: String,
       default: null,

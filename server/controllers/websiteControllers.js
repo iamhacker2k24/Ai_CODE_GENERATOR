@@ -153,8 +153,23 @@ ABSOLUTE RULES
 - IF FORMAT IS BROKEN → RESPONSE IS INVALID
 `;
 
+
+
+//generateSlug completed
+const generateSlug = (text) => {
+    const baseSlug = text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    return `${baseSlug || "website"}-${Date.now()}`;
+};
+//generateSlug completed
 const generateWebsite = async (req, res) => {
+
     try {
+        console.log("generate website is working")
         const { prompt } = req.body;
         if (!prompt || !prompt.trim()) {
             return res.status(400).json({
@@ -163,6 +178,7 @@ const generateWebsite = async (req, res) => {
             });
         }
         const user = req.user;
+        console.log("now user id")
         console.log(user)
         if (!user) {
             return res.status(401).json({
@@ -176,6 +192,7 @@ const generateWebsite = async (req, res) => {
                 message: "You do not have enough credits to generate a website"
             });
         }
+
         const finalPrompt = masterPrompt.replace(
             "USER_PROMPT",
             prompt.trim()
@@ -196,6 +213,7 @@ const generateWebsite = async (req, res) => {
             );
             parsed = extractJSON(raw);
         }
+        console.log(raw)
         if (!parsed || !parsed.code) {
             console.log("AI returned invalid response");
             return res.status(400).json({
@@ -206,10 +224,10 @@ const generateWebsite = async (req, res) => {
 
         console.log("Website model:", Website);
         console.log("Website.create:", Website.create);
-
-
+        const slug = generateSlug(prompt.trim().slice(0, 60));
         const web = await Website.create({
             user: user._id,
+            // user: "5655444ewtg",
             title: prompt.trim().slice(0, 60),
             latestCode: parsed.code,
             conversation: [
@@ -222,14 +240,15 @@ const generateWebsite = async (req, res) => {
                     content: parsed.message || "Website generated successfully"
                 }
             ],
-            deployed: false
+            deployed: false,
+            slug: slug
         });
-
         user.credits -= 50;
         await user.save();
         return res.status(201).json({
             success: true,
             message: "Website generated successfully",
+            code: parsed.code,
             websiteId: web._id,
             title: web.title,
             remainingCredits: userData.credits
@@ -253,8 +272,12 @@ const generateWebsite = async (req, res) => {
 };
 
 
-const getWebsiteByid = async (req, res) => {
 
+
+
+//getWebsite by id is completed
+
+const getWebsiteByid = async (req, res) => {
     const id = req.params.id
     try {
         const website = await Website.findOne({
@@ -274,6 +297,7 @@ const getWebsiteByid = async (req, res) => {
 }
 
 
+//changes completed
 const changes = async (req, res) => {
     try {
         console.log("working from update")
@@ -341,7 +365,6 @@ const changes = async (req, res) => {
                 message: "AI returned an invalid website response"
             });
         }
-
         website.conversation.push({
             role: "ai",
             content: parsed.code
@@ -349,7 +372,6 @@ const changes = async (req, res) => {
             role: "user",
             content: prompt
         })
-
         website.latestCode = parsed.code;
         await website.save();
         if (user.credits < 25) {
@@ -369,17 +391,21 @@ const changes = async (req, res) => {
 }
 
 
+//getAll completed
+
 const getAll = async (req, res) => {
+    console.log("working getAll")
+    const user = req.user;
     try {
         const website = await Website.find({
-            user: req.user._id
+            user: user
         })
         return res.status(200).json(website)
 
     }
     catch (err) {
         return res.status(500).json({
-            message: `getAll website error `
+            message: `getAll website error  ${err.message}`
         })
     }
 }

@@ -37,11 +37,6 @@ app.use("/api",billingRouter)
 
 
 
-
-
-
-
-
 const serverStared = async () => {
     await connectDb()
     app.listen(process.env.PORT, () => {
