@@ -273,4 +273,121 @@ const getWebsiteByid = async (req, res) => {
     }
 }
 
-module.exports = { generateWebsite, getWebsiteByid }
+
+const changes = async (req, res) => {
+    try {
+        console.log("working from update")
+        const { prompt } = req.body;
+        if (!prompt || !prompt.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Prompt is required"
+            });
+        }
+        const id = req.params.id;
+        const website = await Website.findOne({
+            _id: id,
+            // user: req.user._id
+        })
+        if (!website) {
+            return res.status(400).json({ msg: "website not found " })
+        }
+        console.log(website.user)
+        const user = userData.findById({ _id: website.user })
+        // const user = req.user;
+        // console.log(user)
+
+        // if (!user) {
+        //     return res.status(401).json({
+        //         success: false,
+        //         message: "User not found"
+        //     });
+        // }
+        const updateprompt = `
+        CURRENT CODE:
+        ${website.latestCode}
+        USER REQUEST:
+        ${prompt}
+
+        RETRUN RAW JSON ONLY:{
+        
+        "message":"Short confirmation",
+        "code":"<UPDATED FULL HTML>"
+        
+        }
+        `
+
+        console.log(updateprompt)
+        let raw = await genarateResponse(updateprompt);
+        console.log("AI RAW RESPONSE RECEIVED");
+        console.log("RAW TYPE:", typeof raw);
+        // console.log("RAW:", raw);
+        let parsed = extractJSON(raw);
+        if (!parsed || !parsed.code) {
+            console.log("AI returned invalid JSON. Retrying...");
+            raw = await genarateResponse(
+                finalPrompt +
+                "\n\nIMPORTANT: RETURN ONLY VALID JSON. " +
+                "The JSON must contain exactly these fields: " +
+                "\"message\" and \"code\". " +
+                "The code field must contain the complete HTML website."
+            );
+            parsed = extractJSON(raw);
+        }
+        if (!parsed || !parsed.code) {
+            console.log("AI returned invalid response");
+            return res.status(400).json({
+                success: false,
+                message: "AI returned an invalid website response"
+            });
+        }
+
+        website.conversation.push({
+            role: "ai",
+            content: parsed.code
+        }, {
+            role: "user",
+            content: prompt
+        })
+
+        website.latestCode = parsed.code;
+        await website.save();
+        if (user.credits < 25) {
+            return res.status(400).json({ messsage: "you have not enough credits to generatae website " })
+        }
+        return res.status(200).json({
+            message: parsed.message,
+            code: parsed.code,
+            remainingCredits: user.credits
+        })
+    }
+    catch (error) {
+        return res.status(500).json({
+            message: `update website error ${error.message} `
+        })
+    }
+}
+
+
+const getAll = async (req, res) => {
+    try {
+        const website = await Website.find({
+            user: req.user._id
+        })
+        return res.status(200).json(website)
+
+    }
+    catch (err) {
+        return res.status(500).json({
+            message: `getAll website error `
+        })
+    }
+}
+
+
+
+
+
+module.exports = { generateWebsite, getWebsiteByid, changes, getAll }
+
+

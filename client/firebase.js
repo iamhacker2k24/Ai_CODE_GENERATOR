@@ -24,5 +24,3 @@ const auth = getAuth(app)
 const provider = new GoogleAuthProvider()
 
 export { auth, provider }
-
-// 2.13

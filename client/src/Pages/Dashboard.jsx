@@ -3,11 +3,13 @@ import { motion } from "motion/react";
 import { ArrowLeft } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 function Dashboard() {
   const userData = useSelector((state) => state.user.userData);
   const navigate = useNavigate();
-
+  const [loading, setLoading] = useState(false);
+  const [error, setErrror] = useState(null);
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       {/* ================= HEADER ================= */}
@@ -102,6 +104,9 @@ function Dashboard() {
             + New Project
           </button>
         </motion.div>
+
+        {loading && <div className="">loading uour website </div>}
+        {error && <div className="">{error}</div>}
       </div>
     </div>
   );
