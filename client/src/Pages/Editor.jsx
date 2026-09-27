@@ -379,10 +379,10 @@ const Editor = () => {
         <PreviewHeader />
 
         {/* Preview */}
-
+{/* 
         <AnimatePresence>
           {showCode && <motion.dev></motion.dev>}
-        </AnimatePresence>
+        </AnimatePresence> */}
 
         <div
           className="

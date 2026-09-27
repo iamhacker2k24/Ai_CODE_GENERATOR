@@ -1,4 +1,5 @@
-const  PLANS  = require("../config/plan");
+const PLANS = require("../config/plan");
+const stripe = require("../config/stripe");
 
 const billing = async (req, res) => {
     console.log("billing page working........")
@@ -7,17 +8,17 @@ const billing = async (req, res) => {
         const { planType } = req.body
         //  console.log(req.user)
         // const userId = req.user._id;
-        console.log(planType)
-        const plan = PLANS.planType
+        // console.log(planType)
+        const plan = PLANS[planType]
         // console.log(plan)
         if (!plan || plan.price == 0) {
             return res.status(400).json({
                 msg: "Invaild paid plan"
             })
         }
-        const session = await stripe.checkout.session.create({
+        const session = await stripe.checkout.sessions.create({
             mode: "payment",
-            payment_methode_types: ["cards"],
+            payment_method_types: ["card"],
             line_items: [
                 {
                     price_data: {
@@ -34,8 +35,13 @@ const billing = async (req, res) => {
                 // userId,
                 credits: plan.credits,
                 plan: plan.plan
-            }
+            },
+             success_url: `${process.env.FRONTED_URL}`,
+            cancel_url: `${process.env.FRONTED_URL}/pricing`
         })
+       
+        
+        console.log(session)
         success_url: `${process.env.FRONTED_URL}`
         cancel_url: `${process.env.FRONTED_URL}/pricing`
         return res.status(200).json({
@@ -44,7 +50,6 @@ const billing = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
-
             msg: `biling error => ${error.message} `
         })
     }
