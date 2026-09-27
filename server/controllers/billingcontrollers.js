@@ -1,6 +1,8 @@
 const PLANS = require("../config/plan");
 const stripe = require("../config/stripe");
 
+
+//billing is not completed ok
 const billing = async (req, res) => {
     console.log("billing page working........")
     // console.log(PLANS.pro)
@@ -36,11 +38,11 @@ const billing = async (req, res) => {
                 credits: plan.credits,
                 plan: plan.plan
             },
-             success_url: `${process.env.FRONTED_URL}`,
+            success_url: `${process.env.FRONTED_URL}`,
             cancel_url: `${process.env.FRONTED_URL}/pricing`
         })
-       
-        
+
+
         console.log(session)
         success_url: `${process.env.FRONTED_URL}`
         cancel_url: `${process.env.FRONTED_URL}/pricing`
