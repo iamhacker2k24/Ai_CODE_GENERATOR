@@ -117,17 +117,8 @@ export default function Editor() {
       return;
     }
 
-    const blob = new Blob([code], {
-      type: "text/html",
-    });
-
-    const url = URL.createObjectURL(blob);
-    iframeRef.current.src = url;
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [code]);
+    iframeRef.current.srcdoc = code;
+  }, [code, showCode]);
 
   //  =======
   // THINKING STEPS
@@ -305,9 +296,12 @@ export default function Editor() {
   // Helper: Reload iframe preview
   const handleReloadPreview = () => {
     if (!iframeRef.current || !code) return;
-    const blob = new Blob([code], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    iframeRef.current.src = url;
+    iframeRef.current.srcdoc = "";
+    setTimeout(() => {
+      if (iframeRef.current) {
+        iframeRef.current.srcdoc = code;
+      }
+    }, 20);
   };
 
   //  =======
@@ -410,45 +404,50 @@ export default function Editor() {
 
         {/* Workspace Canvas */}
         <div className="flex-1 min-h-0 min-w-0 bg-[#07070a] relative overflow-hidden flex items-center justify-center p-0 lg:p-4 bg-[radial-gradient(#27272a40_1px,transparent_1px)] [background-size:20px_20px]">
-          {showCode ? (
-            /* Monaco Code Editor View */
-            <div className="w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#121214] overflow-hidden shadow-2xl">
-              <MonacoEditor
-                height="100%"
-                language="html"
-                theme="vs-dark"
-                value={code}
-                onChange={(val) => setCode(val || "")}
-                options={{
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  wordWrap: "on",
-                  scrollBeyondLastLine: false,
-                  smoothScrolling: true,
-                  padding: { top: 16, bottom: 16 },
-                  lineNumbersMinChars: 3,
-                }}
-              />
-            </div>
-          ) : (
-            /* Live Preview Canvas Container */
-            <div
-              className={`transition-all duration-300 flex flex-col items-center justify-center bg-white ${
-                deviceView === "desktop"
-                  ? "w-full h-full rounded-none"
-                  : deviceView === "tablet"
-                    ? "w-[768px] max-w-full h-[95%] rounded-2xl border-4 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
-                    : "w-[375px] max-w-full h-[95%] rounded-3xl border-8 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
-              }`}
-            >
-              <iframe
-                ref={iframeRef}
-                title="Website Preview"
-                className="w-full h-full border-0 bg-white block"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-              />
-            </div>
-          )}
+          {/* Monaco Code Editor View */}
+          <div
+            className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#121214] overflow-hidden shadow-2xl ${
+              showCode ? "block relative z-10" : "hidden"
+            }`}
+          >
+            <MonacoEditor
+              height="100%"
+              language="html"
+              theme="vs-dark"
+              value={code}
+              onChange={(val) => setCode(val || "")}
+              options={{
+                fontSize: 13,
+                minimap: { enabled: false },
+                wordWrap: "on",
+                scrollBeyondLastLine: false,
+                smoothScrolling: true,
+                padding: { top: 16, bottom: 16 },
+                lineNumbersMinChars: 3,
+              }}
+            />
+          </div>
+
+          {/* Live Preview Canvas Container */}
+          <div
+            className={`transition-all duration-300 flex-col items-center justify-center bg-white ${
+              showCode ? "hidden" : "flex"
+            } ${
+              deviceView === "desktop"
+                ? "w-full h-full rounded-none"
+                : deviceView === "tablet"
+                  ? "w-[768px] max-w-full h-[95%] rounded-2xl border-4 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
+                  : "w-[375px] max-w-full h-[95%] rounded-3xl border-8 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
+            }`}
+          >
+            <iframe
+              ref={iframeRef}
+              srcDoc={code}
+              title="Website Preview"
+              className="w-full h-full border-0 bg-white block"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            />
+          </div>
         </div>
       </main>
     </div>
