@@ -12,7 +12,7 @@ const genarateResponse = async (prompt) => {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-            Authorization: 'Bearer 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',
+            Authorization: `Bearer ${process.env.API_KEY}`,
             'HTTP-Referer': '<YOUR_SITE_URL>', // Optional. Site URL for rankings on openrouter.ai.
             'X-OpenRouter-Title': '<YOUR_SITE_NAME>', // Optional. Site title for rankings on openrouter.ai.
             'Content-Type': 'application/json',
