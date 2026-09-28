@@ -4,13 +4,14 @@ import axios from "axios";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../redux/userSlice";
+import serverUrl from "../config";
 
 const UseGetcurrentuser = () => {
   const dispatch = useDispatch();
   useEffect(() => {
     const getCurrentUser = async () => {
       try {
-        const result = await axios.get("http://localhost:3000/api/user/me", {
+        const result = await axios.get(`${serverUrl}/api/user/me`, {
           withCredentials: true,
         });
         dispatch(setUserData(result.data));

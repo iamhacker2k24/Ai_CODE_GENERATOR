@@ -28,8 +28,7 @@ import {
   Link2,
   Globe,
 } from "lucide-react";
-
-const serverUrl = "http://localhost:3000";
+import serverUrl from "../config";
 
 const THINKING_STEPS = [
   "Understanding your request",

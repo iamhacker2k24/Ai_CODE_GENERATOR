@@ -4,8 +4,7 @@ import { motion } from "motion/react";
 import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-
-const serverUrl = "http://localhost:3000";
+import serverUrl from "../config";
 
 const Pricing = () => {
   const navigate = useNavigate();

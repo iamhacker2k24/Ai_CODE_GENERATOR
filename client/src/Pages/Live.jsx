@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import axios from "axios";
 import { Sparkles, LoaderCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import serverUrl from "../config";
 
 export default function Live() {
   const { id } = useParams();
@@ -28,7 +29,7 @@ export default function Live() {
         setError("");
 
         const res = await axios.get(
-          `http://localhost:3000/api/website/get-by-id/${id}`,
+          `${serverUrl}/api/website/get-by-id/${id}`,
           {
             withCredentials: true,
           }

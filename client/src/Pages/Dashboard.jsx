@@ -19,6 +19,7 @@ import {
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import serverUrl from "../config";
 
 export default function Dashboard() {
   const userData = useSelector((state) => state.user.userData);
@@ -37,7 +38,7 @@ export default function Dashboard() {
 
     const fetchAllWebsites = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/api/website/getAll", {
+        const res = await axios.get(`${serverUrl}/api/website/getAll`, {
           withCredentials: true,
         });
 

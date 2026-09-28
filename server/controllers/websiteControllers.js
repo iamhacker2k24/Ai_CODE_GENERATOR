@@ -165,7 +165,7 @@ const generateSlug = (text) => {
 
     return `${baseSlug || "website"}-${Date.now()}`;
 };
-//generateSlug completed
+//generateSlug completed ^|^
 const generateWebsite = async (req, res) => {
 
     try {
@@ -186,7 +186,7 @@ const generateWebsite = async (req, res) => {
                 message: "User not found"
             });
         }
-        if (user.credits < 50) {
+        if (user.credits < 20) {
             return res.status(400).json({
                 success: false,
                 message: "You do not have enough credits to generate a website"
@@ -221,7 +221,7 @@ const generateWebsite = async (req, res) => {
                 message: "AI returned an invalid website response"
             });
         }
-        console.log(parsed)
+        // console.log(parsed)
         // console.log("Website model:", Website);
         // console.log("Website.create:", Website.create);
         const slug = generateSlug(prompt.trim().slice(0, 60));
@@ -243,7 +243,7 @@ const generateWebsite = async (req, res) => {
             deployed: false,
             slug: slug
         });
-        user.credits -= 50;
+        user.credits -= 25;
         await user.save();
         return res.status(201).json({
             success: true,
@@ -258,7 +258,7 @@ const generateWebsite = async (req, res) => {
     } catch (error) {
         console.error(
             "Generate website error:",
-            error
+            error.message
         );
         return res.status(500).json({
             success: false,
@@ -300,7 +300,7 @@ const getWebsiteByid = async (req, res) => {
 //changes completed
 const changes = async (req, res) => {
     try {
-        console.log("working from update")
+        // console.log("working from update")
         const { prompt } = req.body;
         if (!prompt || !prompt.trim()) {
             return res.status(400).json({
@@ -317,16 +317,19 @@ const changes = async (req, res) => {
             return res.status(400).json({ msg: "website not found " })
         }
         console.log(website.user)
-        const user = userData.findById({ _id: website.user })
-        // const user = req.user;
+        const user = req.user;
         // console.log(user)
 
-        // if (!user) {
-        //     return res.status(401).json({
-        //         success: false,
-        //         message: "User not found"
-        //     });
-        // }
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+        if (user.credits < 25) {
+            return res.status(400).json({ messsage: "you have not enough credits to generatae website " })
+        }
+
         const updateprompt = `
         CURRENT CODE:
         ${website.latestCode}
@@ -341,7 +344,7 @@ const changes = async (req, res) => {
         }
         `
 
-        console.log(updateprompt)
+        // console.log(updateprompt)
         let raw = await genarateResponse(updateprompt);
         console.log("AI RAW RESPONSE RECEIVED");
         console.log("RAW TYPE:", typeof raw);
@@ -365,7 +368,7 @@ const changes = async (req, res) => {
                 message: "AI returned an invalid website response"
             });
         }
-        console.log(parsed)
+        // console.log(parsed)
         website.conversation.push({
             role: "user",
             content: prompt
@@ -374,11 +377,11 @@ const changes = async (req, res) => {
                 role: "ai",
                 content: parsed.message
             })
+        user.credits -= 20;
+        await user.save();
         website.latestCode = parsed.code;
         await website.save();
-        if (user.credits < 25) {
-            return res.status(400).json({ messsage: "you have not enough credits to generatae website " })
-        }
+
         return res.status(200).json({
             message: parsed.message,
             code: parsed.code,

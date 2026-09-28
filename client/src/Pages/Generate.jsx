@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "axios";
+import serverUrl from "../config";
 
 const PROMPT_SUGGESTIONS = [
   {
@@ -56,7 +57,7 @@ export default function Generate() {
       setError("");
       const prompt = description;
       const result = await axios.post(
-        "http://localhost:3000/api/website/generateWebsite",
+        `${serverUrl}/api/website/generateWebsite`,
         {
           prompt,
         },

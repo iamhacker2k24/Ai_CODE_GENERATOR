@@ -4,6 +4,7 @@ import LoginModel from "../component/LoginModel";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import serverUrl from "../config";
 import {
   Sparkles,
   Code2,
@@ -63,7 +64,7 @@ const Home = () => {
       setLoggingOut(true);
 
       const response = await axios.get(
-        "http://localhost:3000/api/auth/logout",
+        `${serverUrl}/api/auth/logout`,
         {
           withCredentials: true,
         },

@@ -3,6 +3,7 @@ import { signInWithPopup } from "firebase/auth";
 import { auth, provider } from "../../firebase";
 import axios from "axios";
 import { X, Sparkles, ShieldCheck } from "lucide-react";
+import serverUrl from "../config";
 
 const LoginModel = ({ open, onClose }) => {
   const handlegoogleAuth = async () => {
@@ -10,7 +11,7 @@ const LoginModel = ({ open, onClose }) => {
       const result = await signInWithPopup(auth, provider);
       // console.log(result)
       const response = await axios.post(
-        "http://localhost:3000/api/auth/google",
+        `${serverUrl}/api/auth/google`,
         {
           name: result.user.displayName,
           email: result.user.email,
