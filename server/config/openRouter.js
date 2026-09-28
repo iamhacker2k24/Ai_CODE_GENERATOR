@@ -1,5 +1,6 @@
 const extractJSON = require("../utlis/extractJson");
-
+const dotenv = require("dotenv");
+dotenv.config();
 
 const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions"
 const model = "deepseek/deepseek-chat"
