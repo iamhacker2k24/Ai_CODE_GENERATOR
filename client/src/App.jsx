@@ -14,6 +14,7 @@ import Dashboard from "./Pages/Dashboard";
 import Generate from "./Pages/Generate";
 import Editor from "./Pages/Editor";
 import Pricing from "./Pages/pricing";
+import Live from "./Pages/Live";
 
 const App = () => {
   // Get current logged-in user
@@ -66,6 +67,10 @@ const App = () => {
               <Home/>
             )
           }
+        />
+        <Route
+          path="/live/:id"
+          element={<Live />}
         />
 
         <Route

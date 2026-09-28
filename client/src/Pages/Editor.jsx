@@ -1,7 +1,6 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import MonacoEditor from "@monaco-editor/react";
 import {
   ArrowLeft,
   Monitor,
@@ -14,12 +13,12 @@ import {
   AlertCircle,
   Code2,
   Eye,
-  Copy,
   ExternalLink,
   RotateCcw,
   Download,
   Bot,
   User,
+  Rocket,
 } from "lucide-react";
 
 const serverUrl = "http://localhost:3000";
@@ -51,10 +50,12 @@ export default function Editor() {
   const [loading, setLoading] = useState(false);
   const [thinkingStep, setThinkingStep] = useState(0);
 
-  // View Controls
+  // Desktop View Controls
   const [showCode, setShowCode] = useState(false);
   const [deviceView, setDeviceView] = useState("desktop"); // "desktop" | "tablet" | "mobile"
-  const [copied, setCopied] = useState(false);
+
+  // Mobile Tab Control: "chat" | "preview" | "code"
+  const [mobileTab, setMobileTab] = useState("preview");
 
   const iframeRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -118,7 +119,7 @@ export default function Editor() {
     }
 
     iframeRef.current.srcdoc = code;
-  }, [code, showCode]);
+  }, [code, showCode, mobileTab]);
 
   //  =======
   // THINKING STEPS
@@ -259,24 +260,15 @@ export default function Editor() {
     }
   };
 
-  // Helper: Copy code to clipboard
-  const handleCopyCode = async () => {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Copy failed:", err);
-    }
-  };
-
   // Helper: Open preview in new tab
   const handleOpenInNewTab = () => {
-    if (!code) return;
-    const blob = new Blob([code], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
+    if (id) {
+      window.open(`/live/${id}`, "_blank");
+    } else if (code) {
+      const blob = new Blob([code], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    }
   };
 
   // Helper: Download HTML file
@@ -309,7 +301,7 @@ export default function Editor() {
   //  =======
   if (error && !website) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#060608] text-red-400 px-6 font-sans relative">
+      <div className="h-[100dvh] w-full flex items-center justify-center bg-[#060608] text-red-400 px-6 font-sans relative">
         <div className="absolute top-1/4 left-1/3 w-80 h-80 bg-red-600/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="text-center max-w-md p-8 rounded-3xl border border-red-500/20 bg-zinc-900/60 backdrop-blur-xl relative z-10 shadow-2xl">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
@@ -345,7 +337,7 @@ export default function Editor() {
   //  =======
   if (!website) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#060608] text-white font-sans relative overflow-hidden">
+      <div className="h-[100dvh] w-full flex items-center justify-center bg-[#060608] text-white font-sans relative overflow-hidden">
         <div className="absolute top-1/3 left-1/3 w-96 h-96 bg-purple-600/15 rounded-full blur-[130px] pointer-events-none" />
         <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-purple-600/30 animate-pulse">
@@ -364,13 +356,133 @@ export default function Editor() {
   // MAIN EDITOR WORKSPACE
   //  =======
   return (
-    <div className="h-screen w-full flex flex-col lg:flex-row bg-[#060608] text-white overflow-hidden font-sans selection:bg-purple-500/30 selection:text-purple-200">
+    <div className="h-[100dvh] w-full flex flex-col lg:flex-row bg-[#060608] text-white overflow-hidden font-sans selection:bg-purple-500/30 selection:text-purple-200">
       {/* ========================================================
-          LEFT SIDEBAR: AI CO-PILOT CHAT
+          MOBILE TOP BAR (< lg screens): Header + Segmented Tabs
       ======================================================== */}
-      <aside className="w-full lg:w-[380px] lg:min-w-[380px] h-[45vh] lg:h-full flex flex-col bg-[#09090b] border-b lg:border-b-0 lg:border-r border-zinc-800/80 z-20 shadow-2xl">
-        {/* Sidebar Header */}
-        <SidebarHeader website={website} onBack={() => navigate("/dashboard")} />
+      <header className="lg:hidden flex flex-col border-b border-zinc-800/80 bg-[#09090b] z-30 shrink-0">
+        {/* Top Header Row */}
+        <div className="h-14 px-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={() => navigate("/dashboard")}
+              aria-label="Back to dashboard"
+              className="p-2 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-zinc-400 hover:text-white transition active:scale-95 cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <div className="min-w-0">
+              <h2 className="font-bold text-xs sm:text-sm text-white truncate max-w-[130px] sm:max-w-[200px]">
+                {website?.title || "Website Project"}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] text-zinc-400">
+                  {loading ? "AI Generating..." : "Live Ready"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions on Mobile Header */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleReloadPreview}
+              title="Reload Preview"
+              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white active:scale-95 cursor-pointer"
+            >
+              <RotateCcw size={14} />
+            </button>
+            <button
+              onClick={handleOpenInNewTab}
+              title="Open in new tab"
+              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white active:scale-95 cursor-pointer"
+            >
+              <ExternalLink size={14} />
+            </button>
+            <button
+              onClick={handleDownloadHtml}
+              title="Download HTML"
+              className="p-2 rounded-xl bg-purple-600/90 text-white active:scale-95 shadow-md shadow-purple-600/20 cursor-pointer"
+            >
+              <Download size={14} />
+            </button>
+            <button
+              onClick={() => alert("Deploy live feature coming soon!")}
+              title="Deploy Live"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-semibold active:scale-95 shadow-md shadow-emerald-600/20 cursor-pointer"
+            >
+              <Rocket size={13} />
+              <span>Deploy</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Segmented Tab Switcher */}
+        <div className="px-3 pb-2.5 pt-0.5">
+          <div className="grid grid-cols-3 p-1 rounded-xl bg-zinc-950 border border-zinc-800/90 text-xs font-semibold">
+            <button
+              onClick={() => setMobileTab("chat")}
+              className={`py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                mobileTab === "chat"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 font-bold"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Bot size={14} />
+              <span>Chat</span>
+              {loading && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileTab("preview");
+                setShowCode(false);
+              }}
+              className={`py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                mobileTab === "preview"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 font-bold"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Eye size={14} />
+              <span>Preview</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileTab("code");
+                setShowCode(true);
+              }}
+              className={`py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                mobileTab === "code"
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 font-bold"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Code2 size={14} />
+              <span>Code Editor</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ========================================================
+          SIDEBAR: AI CO-PILOT CHAT
+          - Mobile (< lg): Shown ONLY when mobileTab === 'chat'
+          - Desktop (>= lg): Always shown as left column (w-[380px])
+      ======================================================== */}
+      <aside
+        className={`w-full lg:w-[380px] lg:min-w-[380px] flex-1 lg:flex-none lg:h-full flex-col bg-[#09090b] lg:border-r border-zinc-800/80 z-20 shadow-2xl ${
+          mobileTab === "chat" ? "flex" : "hidden lg:flex"
+        }`}
+      >
+        {/* Desktop Sidebar Header */}
+        <div className="hidden lg:block">
+          <SidebarHeader website={website} onBack={() => navigate("/dashboard")} />
+        </div>
 
         {/* Chat Component */}
         <Chat
@@ -382,62 +494,84 @@ export default function Editor() {
           loading={loading}
           thinkingStep={thinkingStep}
           messagesEndRef={messagesEndRef}
+          onSwitchToPreview={() => {
+            setMobileTab("preview");
+            setShowCode(false);
+          }}
         />
       </aside>
 
       {/* ========================================================
-          RIGHT MAIN WORKSPACE: TOOLBAR & PREVIEW / CODE
+          MAIN WORKSPACE: TOOLBAR & PREVIEW / CODE
+          - Mobile (< lg): Shown ONLY when mobileTab !== 'chat'
+          - Desktop (>= lg): Always shown as right column (flex-1)
       ======================================================== */}
-      <main className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#050507] overflow-hidden">
-        {/* Workspace Toolbar */}
-        <WorkspaceToolbar
-          showCode={showCode}
-          setShowCode={setShowCode}
-          deviceView={deviceView}
-          setDeviceView={setDeviceView}
-          onCopy={handleCopyCode}
-          copied={copied}
-          onReload={handleReloadPreview}
-          onOpenNewTab={handleOpenInNewTab}
-          onDownload={handleDownloadHtml}
-        />
+      <main
+        className={`flex-1 min-w-0 min-h-0 flex-col bg-[#050507] overflow-hidden ${
+          mobileTab !== "chat" ? "flex" : "hidden lg:flex"
+        }`}
+      >
+        {/* Desktop Workspace Toolbar */}
+        <div className="hidden lg:block">
+          <WorkspaceToolbar
+            showCode={showCode}
+            setShowCode={setShowCode}
+            deviceView={deviceView}
+            setDeviceView={setDeviceView}
+            onReload={handleReloadPreview}
+            onOpenNewTab={handleOpenInNewTab}
+            onDownload={handleDownloadHtml}
+          />
+        </div>
 
         {/* Workspace Canvas */}
         <div className="flex-1 min-h-0 min-w-0 bg-[#07070a] relative overflow-hidden flex items-center justify-center p-0 lg:p-4 bg-[radial-gradient(#27272a40_1px,transparent_1px)] [background-size:20px_20px]">
-          {/* Monaco Code Editor View */}
+          {/* Code Editor View */}
           <div
-            className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#121214] overflow-hidden shadow-2xl ${
-              showCode ? "block relative z-10" : "hidden"
+            className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#09090b] overflow-hidden shadow-2xl flex-col ${
+              (showCode && mobileTab !== "preview") || mobileTab === "code"
+                ? "flex relative z-10"
+                : "hidden"
             }`}
           >
-            <MonacoEditor
-              height="100%"
-              language="html"
-              theme="vs-dark"
-              value={code}
-              onChange={(val) => setCode(val || "")}
-              options={{
-                fontSize: 13,
-                minimap: { enabled: false },
-                wordWrap: "on",
-                scrollBeyondLastLine: false,
-                smoothScrolling: true,
-                padding: { top: 16, bottom: 16 },
-                lineNumbersMinChars: 3,
-              }}
-            />
+            {/* Code Header Bar */}
+            <div className="h-11 shrink-0 border-b border-zinc-800/80 bg-zinc-950 flex items-center justify-between px-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+                </div>
+                <div className="h-3.5 w-px bg-zinc-800 mx-1" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
+                  <Code2 size={13} className="text-purple-400" />
+                  <span>index.html</span>
+                </div>
+              </div>
+
+              <span className="text-[11px] font-mono text-zinc-500">
+                {code ? `${code.split("\n").length} lines` : "Empty"}
+              </span>
+            </div>
+
+            {/* Code Display */}
+            <pre className="flex-1 min-h-0 p-4 sm:p-6 text-xs sm:text-sm leading-relaxed text-zinc-300 overflow-auto font-mono whitespace-pre-wrap select-text scrollbar-thin scrollbar-thumb-zinc-800">
+              {code || "<!-- No generated code available -->"}
+            </pre>
           </div>
 
           {/* Live Preview Canvas Container */}
           <div
             className={`transition-all duration-300 flex-col items-center justify-center bg-white ${
-              showCode ? "hidden" : "flex"
+              (!showCode && mobileTab !== "code") || mobileTab === "preview"
+                ? "flex"
+                : "hidden"
             } ${
               deviceView === "desktop"
                 ? "w-full h-full rounded-none"
                 : deviceView === "tablet"
-                  ? "w-[768px] max-w-full h-[95%] rounded-2xl border-4 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
-                  : "w-[375px] max-w-full h-[95%] rounded-3xl border-8 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
+                  ? "w-full lg:w-[768px] max-w-full h-full lg:h-[95%] rounded-none lg:rounded-2xl border-0 lg:border-4 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
+                  : "w-full lg:w-[375px] max-w-full h-full lg:h-[95%] rounded-none lg:rounded-3xl border-0 lg:border-8 border-zinc-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] overflow-hidden"
             }`}
           >
             <iframe
@@ -455,7 +589,7 @@ export default function Editor() {
 }
 
 // ========================================================
-// SUB-COMPONENT: SIDEBAR HEADER
+// SUB-COMPONENT: SIDEBAR HEADER (Desktop)
 // ========================================================
 function SidebarHeader({ website, onBack }) {
   return (
@@ -490,15 +624,13 @@ function SidebarHeader({ website, onBack }) {
 }
 
 // ========================================================
-// SUB-COMPONENT: WORKSPACE TOOLBAR
+// SUB-COMPONENT: WORKSPACE TOOLBAR (Desktop)
 // ========================================================
 function WorkspaceToolbar({
   showCode,
   setShowCode,
   deviceView,
   setDeviceView,
-  onCopy,
-  copied,
   onReload,
   onOpenNewTab,
   onDownload,
@@ -529,7 +661,7 @@ function WorkspaceToolbar({
             }`}
           >
             <Code2 size={14} />
-            <span>Source Code</span>
+            <span>Code Editor</span>
           </button>
         </div>
 
@@ -575,25 +707,6 @@ function WorkspaceToolbar({
 
       {/* Right side: Action Buttons */}
       <div className="flex items-center gap-2">
-        {/* Copy Code Button */}
-        <button
-          onClick={onCopy}
-          title="Copy HTML to clipboard"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs font-medium text-zinc-300 hover:text-white transition-all cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <Check size={14} className="text-emerald-400" />
-              <span className="text-emerald-400 font-semibold">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy size={14} />
-              <span className="hidden sm:inline">Copy Code</span>
-            </>
-          )}
-        </button>
-
         {/* Reload Preview Button */}
         {!showCode && (
           <button
@@ -608,7 +721,7 @@ function WorkspaceToolbar({
         {/* Open in New Window Button */}
         <button
           onClick={onOpenNewTab}
-          title="Open preview in new tab"
+          title="Open live preview in new tab"
           className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white transition-all cursor-pointer"
         >
           <ExternalLink size={15} />
@@ -617,10 +730,20 @@ function WorkspaceToolbar({
         {/* Download HTML Button */}
         <button
           onClick={onDownload}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all hover:scale-105 active:scale-95 cursor-pointer"
         >
           <Download size={14} />
           <span className="hidden sm:inline">Export HTML</span>
+        </button>
+
+        {/* Deploy Live Button */}
+        <button
+          type="button"
+          onClick={() => alert("Deploy live feature coming soon!")}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:opacity-95 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        >
+          <Rocket size={14} />
+          <span>Deploy Live</span>
         </button>
       </div>
     </div>
@@ -639,21 +762,22 @@ function Chat({
   loading,
   thinkingStep,
   messagesEndRef,
+  onSwitchToPreview,
 }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]">
       {/* MESSAGE SCROLL CONTAINER */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3.5 sm:space-y-4 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
         {messages.length === 0 && !loading ? (
-          <div className="h-full flex flex-col items-center justify-center text-center px-2 py-6">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 shadow-[0_0_25px_rgba(168,85,247,0.15)]">
-              <Bot size={22} />
+          <div className="h-full flex flex-col items-center justify-center text-center px-2 py-4 sm:py-6">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-2.5 sm:mb-3 shadow-[0_0_25px_rgba(168,85,247,0.15)]">
+              <Bot size={20} className="sm:size-22" />
             </div>
             <h4 className="text-sm font-bold text-white mb-1">
               Ask AI Co-Pilot
             </h4>
-            <p className="text-xs text-zinc-400 max-w-[260px] leading-relaxed mb-4">
-              Describe what you want to add, style, or adjust in your generated website.
+            <p className="text-xs text-zinc-400 max-w-[260px] leading-relaxed mb-3.5">
+              Describe what you want to add, style, or adjust in your website.
             </p>
 
             {/* Starter Suggestion Pills */}
@@ -681,18 +805,31 @@ function Chat({
             {/* AI THINKING PROCESS */}
             {loading && <ThinkingSteps currentStep={thinkingStep} />}
 
+            {/* Helper pill on mobile when not loading and messages exist */}
+            {!loading && messages.length > 0 && onSwitchToPreview && (
+              <div className="lg:hidden flex justify-center pt-2">
+                <button
+                  onClick={onSwitchToPreview}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-600/20 border border-purple-500/30 text-xs font-semibold text-purple-300 active:scale-95"
+                >
+                  <Eye size={13} />
+                  <span>View Live Preview</span>
+                </button>
+              </div>
+            )}
+
             <div ref={messagesEndRef} className="h-1" />
           </>
         )}
       </div>
 
       {/* CHAT INPUT AREA */}
-      <div className="shrink-0 p-3.5 border-t border-zinc-800/80 bg-[#09090b]">
-        <div className="flex items-end gap-2 rounded-2xl bg-zinc-950/80 border border-zinc-800 p-2.5 focus-within:border-purple-500/60 focus-within:ring-2 focus-within:ring-purple-500/10 transition-all duration-200">
+      <div className="shrink-0 p-2.5 sm:p-3.5 border-t border-zinc-800/80 bg-[#09090b]">
+        <div className="flex items-end gap-2 rounded-2xl bg-zinc-950/80 border border-zinc-800 p-2 sm:p-2.5 focus-within:border-purple-500/60 focus-within:ring-2 focus-within:ring-purple-500/10 transition-all duration-200">
           <textarea
-            rows={2}
-            placeholder="Ask AI to change styles, add sections, or fix layout..."
-            className="flex-1 min-w-0 max-h-32 resize-none bg-transparent px-2 py-1 text-sm text-white outline-none placeholder:text-zinc-600 leading-relaxed"
+            rows={1}
+            placeholder="Ask AI to change styles, add sections..."
+            className="flex-1 min-w-0 max-h-28 resize-none bg-transparent px-2 py-1 text-base sm:text-sm text-white outline-none placeholder:text-zinc-600 leading-relaxed"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -713,7 +850,7 @@ function Chat({
           </button>
         </div>
 
-        <p className="text-[10px] text-zinc-500 mt-2 text-center">
+        <p className="hidden sm:block text-[10px] text-zinc-500 mt-2 text-center">
           Press <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">Enter</kbd> to send · <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300">Shift + Enter</kbd> for new line
         </p>
       </div>
@@ -729,15 +866,15 @@ function MessageItem({ message }) {
   const isError = message.role === "error";
 
   return (
-    <div className={`flex gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex gap-2 sm:gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
-          <Bot size={14} />
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+          <Bot size={13} className="sm:size-14" />
         </div>
       )}
 
       <div
-        className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-sm ${
+        className={`max-w-[88%] sm:max-w-[85%] px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-sm ${
           isUser
             ? "bg-gradient-to-br from-purple-600 to-indigo-600 text-white rounded-br-xs"
             : isError
@@ -750,8 +887,8 @@ function MessageItem({ message }) {
       </div>
 
       {isUser && (
-        <div className="w-7 h-7 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0 mt-0.5">
-          <User size={14} />
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0 mt-0.5">
+          <User size={13} className="sm:size-14" />
         </div>
       )}
     </div>
@@ -763,20 +900,20 @@ function MessageItem({ message }) {
 // ========================================================
 function ThinkingSteps({ currentStep }) {
   return (
-    <div className="flex justify-start pl-9">
-      <div className="w-full max-w-[95%] rounded-2xl bg-zinc-900/90 border border-purple-500/25 p-3.5 shadow-lg shadow-purple-900/10">
+    <div className="flex justify-start pl-8 sm:pl-9">
+      <div className="w-full max-w-[95%] rounded-2xl bg-zinc-900/90 border border-purple-500/25 p-3 sm:p-3.5 shadow-lg shadow-purple-900/10">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-6 h-6 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
-            <Sparkles size={12} className="text-purple-400" />
+        <div className="flex items-center gap-2 mb-2.5 sm:mb-3">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-purple-500/15 border border-purple-500/25 flex items-center justify-center">
+            <Sparkles size={11} className="sm:size-12 text-purple-400" />
           </div>
-          <span className="text-xs font-semibold text-purple-300">
+          <span className="text-[11px] sm:text-xs font-semibold text-purple-300">
             Synthesizing Code Revisions...
           </span>
         </div>
 
         {/* Steps */}
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {THINKING_STEPS.map((step, index) => {
             const completed = index < currentStep;
             const active = index === currentStep;
@@ -784,7 +921,7 @@ function ThinkingSteps({ currentStep }) {
             return (
               <div
                 key={step}
-                className={`flex items-center gap-2.5 text-xs transition-all duration-300 ${
+                className={`flex items-center gap-2 sm:gap-2.5 text-[11px] sm:text-xs transition-all duration-300 ${
                   completed
                     ? "text-zinc-500"
                     : active
@@ -794,9 +931,9 @@ function ThinkingSteps({ currentStep }) {
               >
                 <div className="w-4 h-4 flex items-center justify-center shrink-0">
                   {completed ? (
-                    <Check size={13} className="text-emerald-400" />
+                    <Check size={12} className="sm:size-13 text-emerald-400" />
                   ) : active ? (
-                    <LoaderCircle size={13} className="text-purple-400 animate-spin" />
+                    <LoaderCircle size={12} className="sm:size-13 text-purple-400 animate-spin" />
                   ) : (
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
                   )}
@@ -808,7 +945,7 @@ function ThinkingSteps({ currentStep }) {
         </div>
 
         {/* Animated Progress Bar */}
-        <div className="mt-3.5 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+        <div className="mt-3 h-1 sm:h-1.5 rounded-full bg-zinc-800 overflow-hidden">
           <div
             className="h-full rounded-full bg-gradient-to-r from-purple-500 via-indigo-500 to-pink-500 transition-all duration-700 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
             style={{
