@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import MonacoEditor from "@monaco-editor/react";
 import {
   ArrowLeft,
   Monitor,
@@ -526,38 +527,40 @@ export default function Editor() {
 
         {/* Workspace Canvas */}
         <div className="flex-1 min-h-0 min-w-0 bg-[#07070a] relative overflow-hidden flex items-center justify-center p-0 lg:p-4 bg-[radial-gradient(#27272a40_1px,transparent_1px)] [background-size:20px_20px]">
-          {/* Code Editor View */}
+          {/* Monaco Code Editor View */}
           <div
-            className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#09090b] overflow-hidden shadow-2xl flex-col ${
+            className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#121214] overflow-hidden shadow-2xl ${
               (showCode && mobileTab !== "preview") || mobileTab === "code"
-                ? "flex relative z-10"
+                ? "flex flex-col relative z-10"
                 : "hidden"
             }`}
           >
-            {/* Code Header Bar */}
-            <div className="h-11 shrink-0 border-b border-zinc-800/80 bg-zinc-950 flex items-center justify-between px-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
-                </div>
-                <div className="h-3.5 w-px bg-zinc-800 mx-1" />
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
-                  <Code2 size={13} className="text-purple-400" />
-                  <span>index.html</span>
-                </div>
-              </div>
-
-              <span className="text-[11px] font-mono text-zinc-500">
-                {code ? `${code.split("\n").length} lines` : "Empty"}
+            {/* Mobile Code Editor Toolbar */}
+            <div className="lg:hidden flex items-center justify-between px-3.5 py-2 border-b border-zinc-800 bg-zinc-950 text-xs">
+              <span className="text-zinc-400 font-medium flex items-center gap-1.5">
+                <Code2 size={13} className="text-purple-400" />
+                Code Editor
               </span>
             </div>
 
-            {/* Code Display */}
-            <pre className="flex-1 min-h-0 p-4 sm:p-6 text-xs sm:text-sm leading-relaxed text-zinc-300 overflow-auto font-mono whitespace-pre-wrap select-text scrollbar-thin scrollbar-thumb-zinc-800">
-              {code || "<!-- No generated code available -->"}
-            </pre>
+            <div className="flex-1 min-h-0">
+              <MonacoEditor
+                height="100%"
+                language="html"
+                theme="vs-dark"
+                value={code}
+                onChange={(val) => setCode(val || "")}
+                options={{
+                  fontSize: 12,
+                  minimap: { enabled: false },
+                  wordWrap: "on",
+                  scrollBeyondLastLine: false,
+                  smoothScrolling: true,
+                  padding: { top: 12, bottom: 12 },
+                  lineNumbersMinChars: 3,
+                }}
+              />
+            </div>
           </div>
 
           {/* Live Preview Canvas Container */}

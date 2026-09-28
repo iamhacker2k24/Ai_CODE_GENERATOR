@@ -412,8 +412,29 @@ const getAll = async (req, res) => {
 
 
 
+//this is for manula routes 
+
+const manualEdit = async (req, res) => {
+    const id = req.params.id;
+    const data = await Website.findOne({
+        _id: id
+    })
+    if (!data) {
+        res.status(200).send({
+            msg: "wrong project id given "
+        })
+    }
+    console.log(data)
+    console.log("working");
+    res.status(200).json(data)
+
+    // editing issu 
+    //token histroy 
+
+}
 
 
-module.exports = { generateWebsite, getWebsiteByid, changes, getAll }
+
+module.exports = { generateWebsite, getWebsiteByid, changes, getAll, manualEdit }
 
 
