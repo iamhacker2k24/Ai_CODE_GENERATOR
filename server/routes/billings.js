@@ -7,6 +7,6 @@ const billing = require("../controllers/billingcontrollers");
 
 const billingRouter = express.Router();
 
-billingRouter.post("/billing", billing);
+billingRouter.post("/billing", isAuth, billing);
 
 module.exports = billingRouter;

@@ -27,7 +27,11 @@ import {
   ChevronDown,
   Link2,
   Globe,
+  Coins,
+  ArrowRight,
 } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { setUserData } from "../redux/userSlice";
 import serverUrl from "../config";
 
 const THINKING_STEPS = [
@@ -48,6 +52,8 @@ const SUGGESTIONS = [
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const userData = useSelector((state) => state.user.userData);
 
   const [website, setWebsite] = useState(null);
   const [error, setError] = useState("");
@@ -120,6 +126,26 @@ export default function Editor() {
       handleGetWebsite();
     }
   }, [id]);
+
+  // Fetch current user if not in store yet
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const res = await axios.get(`${serverUrl}/api/user/me`, {
+          withCredentials: true,
+        });
+        if (res.data) {
+          dispatch(setUserData(res.data));
+        }
+      } catch (err) {
+        console.warn("Fetch user notice in Editor:", err.message);
+      }
+    };
+
+    if (!userData) {
+      fetchCurrentUser();
+    }
+  }, [userData, dispatch]);
 
   //  =======
   // AUTO SCROLL CHAT
@@ -268,24 +294,61 @@ export default function Editor() {
           setMessages(updatedWebsite.conversation);
         }
       }
+
+      // Update user credits in Redux store if returned by backend
+      if (result.data?.remainingCredits !== undefined && userData) {
+        dispatch(
+          setUserData({
+            ...userData,
+            credits: result.data.remainingCredits,
+          })
+        );
+      }
     } catch (err) {
       console.error("Update website error:", err);
 
+      const errData = err.response?.data;
       const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
+        errData?.messsage || // Note: backend uses "messsage" with 3 s's
+        errData?.message ||
+        errData?.msg ||
+        errData?.error ||
         err.message ||
         "Failed to update website.";
 
-      setError(errorMessage);
+      const isCreditError =
+        String(errorMessage).toLowerCase().includes("not enough credit") ||
+        String(errorMessage).toLowerCase().includes("credit") ||
+        err.response?.status === 402 ||
+        (userData && Number(userData.credits) < 25);
 
-      setMessages((previous) => [
-        ...previous,
-        {
-          role: "error",
-          content: errorMessage,
-        },
-      ]);
+      if (isCreditError) {
+        // Ensure credits in store reflect low status (< 25)
+        if (userData && Number(userData.credits) >= 25) {
+          dispatch(setUserData({ ...userData, credits: 0 }));
+        }
+
+        setError(errorMessage);
+
+        setMessages((previous) => [
+          ...previous,
+          {
+            role: "error",
+            content: errorMessage,
+            isCreditError: true,
+          },
+        ]);
+      } else {
+        setError(errorMessage);
+
+        setMessages((previous) => [
+          ...previous,
+          {
+            role: "error",
+            content: errorMessage,
+          },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -569,6 +632,18 @@ export default function Editor() {
           </div>
         </div>
 
+        {/* Mobile Credits Bar */}
+        <div className="px-3 py-1.5 flex items-center justify-between border-t border-zinc-900 bg-zinc-950/80 text-[11px]">
+          <div className="flex items-center gap-1.5 text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="font-semibold text-zinc-300">Available Credits</span>
+          </div>
+          <CreditBadge
+            credits={userData?.credits ?? 0}
+            onClick={() => navigate("/pricing")}
+          />
+        </div>
+
         {/* Mobile Segmented Tab Switcher */}
         <div className="px-3 pb-2.5 pt-0.5">
           <div className="grid grid-cols-3 p-1 rounded-xl bg-zinc-950 border border-zinc-800/90 text-xs font-semibold">
@@ -632,7 +707,12 @@ export default function Editor() {
       >
         {/* Desktop Sidebar Header */}
         <div className="hidden lg:block">
-          <SidebarHeader website={website} onBack={() => navigate("/dashboard")} />
+          <SidebarHeader
+            website={website}
+            onBack={() => navigate("/dashboard")}
+            credits={userData?.credits ?? 0}
+            onPricing={() => navigate("/pricing")}
+          />
         </div>
 
         {/* Chat Component */}
@@ -649,6 +729,7 @@ export default function Editor() {
             setMobileTab("preview");
             setShowCode(false);
           }}
+          onNavigatePricing={() => navigate("/pricing")}
         />
       </aside>
 
@@ -681,6 +762,8 @@ export default function Editor() {
             isDeploying={isDeploying}
             isDeployed={isDeployed}
             onOpenQr={() => setShowQrModal(true)}
+            credits={userData?.credits ?? 0}
+            onPricing={() => navigate("/pricing")}
           />
         </div>
 
@@ -985,9 +1068,50 @@ export default function Editor() {
 }
 
 // ========================================================
+// SUB-COMPONENT: CREDIT BADGE (with red alert icon when < 25)
+// ========================================================
+function CreditBadge({ credits = 0, onClick }) {
+  const isLow = Number(credits ?? 0) < 25;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={
+        isLow
+          ? "Credits Low (< 25). Click to get more credits on Pricing page!"
+          : "Available Credits. Click to view Pricing plans."
+      }
+      className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-xl border transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-sm ${
+        isLow
+          ? "bg-red-500/15 hover:bg-red-500/25 border-red-500/50 hover:border-red-400 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.25)] animate-pulse"
+          : "bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-yellow-500/20 hover:border-yellow-500/40 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.1)]"
+      }`}
+    >
+      {isLow ? (
+        <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+      ) : (
+        <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+      )}
+      <span className={isLow ? "text-red-300 hidden sm:inline" : "text-zinc-400 hidden sm:inline"}>
+        Credits:
+      </span>
+      <span className={`font-bold ${isLow ? "text-red-400 font-mono" : "text-yellow-300"}`}>
+        {credits ?? 0}
+      </span>
+      {isLow && (
+        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-red-500/25 text-red-300 border border-red-500/40 ml-0.5">
+          Low
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ========================================================
 // SUB-COMPONENT: SIDEBAR HEADER (Desktop)
 // ========================================================
-function SidebarHeader({ website, onBack }) {
+function SidebarHeader({ website, onBack, credits, onPricing }) {
   return (
     <div className="h-16 min-h-16 px-4 flex items-center justify-between border-b border-zinc-800/80 bg-[#09090b]">
       <div className="flex items-center gap-3 min-w-0">
@@ -1006,15 +1130,14 @@ function SidebarHeader({ website, onBack }) {
               Live AI Editor
             </span>
           </div>
-          <h2 className="font-bold text-sm text-white truncate max-w-[200px]">
+          <h2 className="font-bold text-sm text-white truncate max-w-[140px] sm:max-w-[170px]">
             {website?.title || "Website Project"}
           </h2>
         </div>
       </div>
 
-      <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shadow-sm">
-        <Sparkles size={16} />
-      </div>
+      {/* Credit Badge */}
+      <CreditBadge credits={credits} onClick={onPricing} />
     </div>
   );
 }
@@ -1217,6 +1340,8 @@ function WorkspaceToolbar({
   isDeploying,
   isDeployed,
   onOpenQr,
+  credits,
+  onPricing,
 }) {
   return (
     <div className="h-16 min-h-16 px-4 sm:px-6 flex items-center justify-between border-b border-zinc-800/80 bg-[#09090b] z-10">
@@ -1348,6 +1473,9 @@ function WorkspaceToolbar({
           <span className="hidden sm:inline">Export HTML</span>
         </button>
 
+        {/* Credits Badge */}
+        <CreditBadge credits={credits} onClick={onPricing} />
+
         {/* Deploy Live / Deployed Button with Dropdown Menu */}
         <DeployButtonMenu
           id={id}
@@ -1376,6 +1504,7 @@ function Chat({
   thinkingStep,
   messagesEndRef,
   onSwitchToPreview,
+  onNavigatePricing,
 }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]">
@@ -1412,7 +1541,11 @@ function Chat({
         ) : (
           <>
             {messages.map((m, i) => (
-              <MessageItem key={m._id || m.id || `${m.role}-${i}`} message={m} />
+              <MessageItem
+                key={m._id || m.id || `${m.role}-${i}`}
+                message={m}
+                onNavigatePricing={onNavigatePricing}
+              />
             ))}
 
             {/* AI THINKING PROCESS */}
@@ -1474,9 +1607,48 @@ function Chat({
 // ========================================================
 // SUB-COMPONENT: MESSAGE ITEM
 // ========================================================
-function MessageItem({ message }) {
+function MessageItem({ message, onNavigatePricing }) {
   const isUser = message.role === "user";
   const isError = message.role === "error";
+  const isCreditError = message.isCreditError;
+
+  // Dedicated Card for Credit Expiration / Insufficient Credits
+  if (isCreditError) {
+    return (
+      <div className="flex gap-2 sm:gap-2.5 justify-start">
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0 mt-0.5">
+          <AlertCircle size={14} className="text-red-400 animate-pulse" />
+        </div>
+
+        <div className="max-w-[92%] sm:max-w-[88%] p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-red-950/40 via-[#181014] to-zinc-900 border border-red-500/30 text-white rounded-bl-xs shadow-xl shadow-red-950/20">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-[10px] font-bold uppercase tracking-wider text-red-400 border border-red-500/30 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+              Credits Expired
+            </span>
+          </div>
+
+          <h4 className="text-xs sm:text-sm font-bold text-red-200 mb-1">
+            Insufficient Credits to Generate Website
+          </h4>
+
+          <p className="text-xs text-zinc-300 leading-relaxed mb-3">
+            {message.content || "You do not have enough credits to generate or update websites. Each AI update requires at least 25 credits."}
+          </p>
+
+          <button
+            type="button"
+            onClick={onNavigatePricing}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xs font-bold shadow-md shadow-red-600/30 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+          >
+            <Coins size={14} className="text-yellow-200" />
+            <span>Get More Credits</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex gap-2 sm:gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>

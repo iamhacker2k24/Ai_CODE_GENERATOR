@@ -11,6 +11,8 @@ const billing = async (req, res) => {
         //  console.log(req.user)
         // const userId = req.user._id;
         // console.log(planType)
+        const user = req.user;
+        console.log(user._id)
         const plan = PLANS[planType]
         // console.log(plan)
         if (!plan || plan.price == 0) {
@@ -34,7 +36,7 @@ const billing = async (req, res) => {
                 }
             ],
             metadata: {
-                // userId,
+                userId: user._id.toString(),
                 credits: plan.credits,
                 plan: plan.plan
             },
@@ -44,8 +46,6 @@ const billing = async (req, res) => {
 
 
         console.log(session)
-        success_url: `${process.env.FRONTED_URL}`
-        cancel_url: `${process.env.FRONTED_URL}/pricing`
         return res.status(200).json({
             sessionUrl: session.url
         })

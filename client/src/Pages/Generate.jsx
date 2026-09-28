@@ -77,11 +77,14 @@ export default function Generate() {
       }
     } catch (err) {
       console.log(err.message);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Generation encountered an issue. Please verify your connection and try again."
-      );
+      const errData = err.response?.data;
+      const errorMessage =
+        errData?.messsage || // Backend typo "messsage" with 3 s's
+        errData?.message ||
+        errData?.msg ||
+        err.message ||
+        "Generation encountered an issue. Please verify your connection and try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -128,12 +131,36 @@ export default function Generate() {
 
           {/* Right Side: Credits & Quick Links */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300">
-              <Zap size={13} className="text-amber-400" />
+            <button
+              onClick={() => navigate("/pricing")}
+              title={
+                (userData?.credits ?? 0) < 25
+                  ? "Credits Low (< 25). Click to get more credits on Pricing page!"
+                  : "Available Credits. Click to view Pricing plans."
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                (userData?.credits ?? 0) < 25
+                  ? "bg-red-500/15 border-red-500/40 text-red-400 animate-pulse hover:bg-red-500/25"
+                  : "bg-zinc-900/80 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white"
+              }`}
+            >
+              {(userData?.credits ?? 0) < 25 ? (
+                <AlertCircle size={13} className="text-red-400 shrink-0" />
+              ) : (
+                <Zap size={13} className="text-amber-400 shrink-0" />
+              )}
               <span>
-                <strong className="text-white font-semibold">{userData?.credits ?? 0}</strong> Credits
+                <strong className={`font-semibold ${(userData?.credits ?? 0) < 25 ? "text-red-300" : "text-white"}`}>
+                  {userData?.credits ?? 0}
+                </strong>{" "}
+                Credits
               </span>
-            </div>
+              {(userData?.credits ?? 0) < 25 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-red-500/25 text-red-300 border border-red-500/40 ml-0.5">
+                  Low
+                </span>
+              )}
+            </button>
 
             <button
               onClick={() => navigate("/dashboard")}
@@ -183,8 +210,21 @@ export default function Generate() {
             >
               <AlertCircle size={20} className="text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-red-300">Generation Error</p>
+                <p className="text-sm font-semibold text-red-300">
+                  {String(error).toLowerCase().includes("credit")
+                    ? "Insufficient Credits"
+                    : "Generation Error"}
+                </p>
                 <p className="text-xs text-red-400/90 mt-0.5">{error}</p>
+                {String(error).toLowerCase().includes("credit") && (
+                  <button
+                    onClick={() => navigate("/pricing")}
+                    className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:opacity-95 text-white text-xs font-bold shadow-md shadow-red-600/30 transition cursor-pointer"
+                  >
+                    <span>Get More Credits</span>
+                    <ArrowRight size={13} />
+                  </button>
+                )}
               </div>
               <button
                 onClick={() => setError("")}

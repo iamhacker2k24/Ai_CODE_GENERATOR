@@ -17,6 +17,7 @@ import {
   Terminal,
   RefreshCw,
   Eye,
+  AlertCircle,
 } from "lucide-react";
 
 const Home = () => {
@@ -138,13 +139,36 @@ const Home = () => {
 
               {/* Credits */}
               {userData && (
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/10 to-amber-500/10 backdrop-blur-xl border border-yellow-500/20 text-xs font-medium text-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.1)] hover:border-yellow-500/40 transition">
-                  <Coins className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-zinc-400">Credits:</span>
-                  <span className="font-semibold text-yellow-300">
+                <button
+                  onClick={() => navigate("/pricing")}
+                  title={
+                    (userData.credits ?? 0) < 25
+                      ? "Credits Low (< 25). Click to get more credits on Pricing page!"
+                      : "Available Credits. Click to view Pricing plans."
+                  }
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full backdrop-blur-xl border text-xs font-medium transition cursor-pointer hover:scale-105 active:scale-95 ${
+                    (userData.credits ?? 0) < 25
+                      ? "bg-red-500/15 border-red-500/40 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.25)] animate-pulse hover:border-red-400"
+                      : "bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-yellow-500/20 text-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.1)] hover:border-yellow-500/40"
+                  }`}
+                >
+                  {(userData.credits ?? 0) < 25 ? (
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                  ) : (
+                    <Coins className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                  )}
+                  <span className={(userData.credits ?? 0) < 25 ? "text-red-300" : "text-zinc-400"}>
+                    Credits:
+                  </span>
+                  <span className={`font-semibold ${(userData.credits ?? 0) < 25 ? "text-red-400 font-mono" : "text-yellow-300"}`}>
                     {userData.credits ?? 0}
                   </span>
-                </div>
+                  {(userData.credits ?? 0) < 25 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-red-500/25 text-red-300 border border-red-500/40 ml-0.5">
+                      Low
+                    </span>
+                  )}
+                </button>
               )}
 
               {/*   USER PROFILE / AUTH   */}
