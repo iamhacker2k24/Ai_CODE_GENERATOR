@@ -221,9 +221,9 @@ const generateWebsite = async (req, res) => {
                 message: "AI returned an invalid website response"
             });
         }
-
-        console.log("Website model:", Website);
-        console.log("Website.create:", Website.create);
+        console.log(parsed)
+        // console.log("Website model:", Website);
+        // console.log("Website.create:", Website.create);
         const slug = generateSlug(prompt.trim().slice(0, 60));
         const web = await Website.create({
             user: user._id,
@@ -365,13 +365,15 @@ const changes = async (req, res) => {
                 message: "AI returned an invalid website response"
             });
         }
+        console.log(parsed)
         website.conversation.push({
-            role: "ai",
-            content: parsed.code
-        }, {
             role: "user",
             content: prompt
-        })
+        },
+            {
+                role: "ai",
+                content: parsed.message
+            })
         website.latestCode = parsed.code;
         await website.save();
         if (user.credits < 25) {
@@ -415,18 +417,25 @@ const getAll = async (req, res) => {
 //this is for manula routes 
 
 const manualEdit = async (req, res) => {
+    // console.log(req.body)
+    const { prompt } = req.body
     const id = req.params.id;
-    const data = await Website.findOne({
+
+    const updated = await Website.findOneAndUpdate({
         _id: id
-    })
-    if (!data) {
-        res.status(200).send({
-            msg: "wrong project id given "
+    }, { latestCode: prompt })
+
+    if (!updated) {
+        res.status(200).json({
+            sucess: true,
+            msg: "code updated unsussfullly"
         })
     }
-    console.log(data)
-    console.log("working");
-    res.status(200).json(data)
+
+    res.status(200).json({
+        sucess: true,
+        msg: "code updated sussfullly"
+    })
 
     // editing issu 
     //token histroy 
@@ -434,7 +443,29 @@ const manualEdit = async (req, res) => {
 }
 
 
+const deployed = async (req, res) => {
+    const id = req.params.id;
+    console.log(id)
+    const updated = await Website.findOneAndUpdate({
+        _id: id
+    }, { deployed: true })
 
-module.exports = { generateWebsite, getWebsiteByid, changes, getAll, manualEdit }
+    if (!updated) {
+        res.status(200).json({
+            sucess: true,
+            msg: " deployed failed "
+        })
+    }
+
+    res.status(200).json({
+        sucess: true,
+        msg: "deployed  sussfullly"
+    })
+
+}
+
+
+
+module.exports = { generateWebsite, getWebsiteByid, changes, getAll, manualEdit, deployed }
 
 

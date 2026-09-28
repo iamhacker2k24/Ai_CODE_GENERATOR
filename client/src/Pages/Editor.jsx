@@ -20,6 +20,13 @@ import {
   Bot,
   User,
   Rocket,
+  Save,
+  X,
+  Copy,
+  QrCode,
+  ChevronDown,
+  Link2,
+  Globe,
 } from "lucide-react";
 
 const serverUrl = "http://localhost:3000";
@@ -58,6 +65,19 @@ export default function Editor() {
   // Mobile Tab Control: "chat" | "preview" | "code"
   const [mobileTab, setMobileTab] = useState("preview");
 
+  // Save Code Manually State
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Deploy State
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployedData, setDeployedData] = useState(null);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [copiedDeployUrl, setCopiedDeployUrl] = useState(false);
+  const [isDeployed, setIsDeployed] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
+
   const iframeRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -80,7 +100,8 @@ export default function Editor() {
 
         const websiteData = result.data;
         setWebsite(websiteData);
-        setCode(websiteData?.latestCode || "");
+        setCode(websiteData?.latestCode || websiteData?.code || "");
+        setIsDeployed(Boolean(websiteData?.deployed));
         setMessages(
           Array.isArray(websiteData?.conversation)
             ? websiteData.conversation
@@ -120,7 +141,7 @@ export default function Editor() {
     }
 
     iframeRef.current.srcdoc = code;
-  }, [code, showCode, mobileTab]);
+  }, [code, showCode, mobileTab, previewKey]);
 
   //  =======
   // THINKING STEPS
@@ -193,8 +214,11 @@ export default function Editor() {
       console.log("Update result:", result.data);
 
       const newCode =
+        result.data?.code ||
         result.data?.latestCode ||
         result.data?.website?.latestCode ||
+        result.data?.website?.code ||
+        result.data?.data?.code ||
         result.data?.data?.latestCode ||
         "";
 
@@ -206,6 +230,18 @@ export default function Editor() {
           ...(result.data?.website || {}),
           latestCode: newCode,
         }));
+
+        // Force preview iframe to immediately refresh with the newly generated code
+        setPreviewKey((k) => k + 1);
+
+        if (iframeRef.current) {
+          iframeRef.current.srcdoc = "";
+          setTimeout(() => {
+            if (iframeRef.current) {
+              iframeRef.current.srcdoc = newCode;
+            }
+          }, 30);
+        }
       }
 
       const aiMessage =
@@ -225,7 +261,9 @@ export default function Editor() {
       if (result.data?.website) {
         const updatedWebsite = result.data.website;
         setWebsite(updatedWebsite);
-        setCode(updatedWebsite?.latestCode || newCode || "");
+        if (updatedWebsite?.latestCode || updatedWebsite?.code) {
+          setCode(updatedWebsite.latestCode || updatedWebsite.code);
+        }
 
         if (Array.isArray(updatedWebsite?.conversation)) {
           setMessages(updatedWebsite.conversation);
@@ -258,6 +296,97 @@ export default function Editor() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleUpdate();
+    }
+  };
+
+  //  =======
+  // SAVE MANUALLY API CALL
+  //  =======
+  const handleSaveManually = async () => {
+    if (!id) return;
+    try {
+      setIsSaving(true);
+      setSaveSuccess(false);
+
+      const res = await axios.post(
+        `${serverUrl}/api/website/editmanually/${id}`,
+        {
+          prompt: code,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log("Edit manually result:", res.data);
+
+      setSaveSuccess(true);
+
+      // Refresh live preview iframe with updated code
+      if (iframeRef.current) {
+        iframeRef.current.srcdoc = code;
+      }
+
+      // Reset success status after 2.5s
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 2500);
+    } catch (err) {
+      console.error("Save manually error:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.response?.data?.msg ||
+        err.message ||
+        "Failed to save code";
+      alert(`Error saving code: ${errMsg}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  //  =======
+  // DEPLOY API CALL (GET request to /api/website/deployed/:id)
+  //  =======
+  const handleDeploy = async () => {
+    if (!id) return;
+    try {
+      setIsDeploying(true);
+
+      // Auto-save any manual code modifications first so deployed site is up to date
+      if (code) {
+        try {
+          await axios.post(
+            `${serverUrl}/api/website/editmanually/${id}`,
+            { prompt: code },
+            { withCredentials: true }
+          );
+        } catch (saveErr) {
+          console.warn("Auto-save before deploy notice:", saveErr);
+        }
+      }
+
+      const res = await axios.get(
+        `${serverUrl}/api/website/deployed/${id}`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log("Deployed result:", res.data);
+      setDeployedData(res.data);
+      setIsDeployed(true);
+      setWebsite((prev) => (prev ? { ...prev, deployed: true } : prev));
+      setShowDeployModal(true);
+    } catch (err) {
+      console.error("Deploy error:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.response?.data?.msg ||
+        err.message ||
+        "Failed to deploy website.";
+      alert(`Deploy Error: ${errMsg}`);
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -387,6 +516,27 @@ export default function Editor() {
 
           {/* Quick Actions on Mobile Header */}
           <div className="flex items-center gap-1.5">
+            {mobileTab === "code" && (
+              <button
+                onClick={handleSaveManually}
+                disabled={isSaving}
+                title="Save Code"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-white text-xs font-semibold active:scale-95 shadow-md cursor-pointer ${
+                  saveSuccess
+                    ? "bg-emerald-600 shadow-emerald-600/30"
+                    : "bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-600/20"
+                } disabled:opacity-50`}
+              >
+                {isSaving ? (
+                  <LoaderCircle size={13} className="animate-spin" />
+                ) : saveSuccess ? (
+                  <Check size={13} className="text-emerald-200" />
+                ) : (
+                  <Save size={13} />
+                )}
+                <span>{isSaving ? "Saving" : saveSuccess ? "Saved" : "Save"}</span>
+              </button>
+            )}
             <button
               onClick={handleReloadPreview}
               title="Reload Preview"
@@ -408,14 +558,15 @@ export default function Editor() {
             >
               <Download size={14} />
             </button>
-            <button
-              onClick={() => alert("Deploy live feature coming soon!")}
-              title="Deploy Live"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-semibold active:scale-95 shadow-md shadow-emerald-600/20 cursor-pointer"
-            >
-              <Rocket size={13} />
-              <span>Deploy</span>
-            </button>
+            <DeployButtonMenu
+              id={id}
+              isDeployed={isDeployed}
+              isDeploying={isDeploying}
+              onDeploy={handleDeploy}
+              onOpenQr={() => setShowQrModal(true)}
+              size="sm"
+              align="right"
+            />
           </div>
         </div>
 
@@ -515,13 +666,22 @@ export default function Editor() {
         {/* Desktop Workspace Toolbar */}
         <div className="hidden lg:block">
           <WorkspaceToolbar
+            id={id}
             showCode={showCode}
             setShowCode={setShowCode}
+            setMobileTab={setMobileTab}
             deviceView={deviceView}
             setDeviceView={setDeviceView}
             onReload={handleReloadPreview}
             onOpenNewTab={handleOpenInNewTab}
             onDownload={handleDownloadHtml}
+            onSave={handleSaveManually}
+            isSaving={isSaving}
+            saveSuccess={saveSuccess}
+            onDeploy={handleDeploy}
+            isDeploying={isDeploying}
+            isDeployed={isDeployed}
+            onOpenQr={() => setShowQrModal(true)}
           />
         </div>
 
@@ -530,31 +690,78 @@ export default function Editor() {
           {/* Monaco Code Editor View */}
           <div
             className={`w-full h-full rounded-none lg:rounded-2xl border-0 lg:border border-zinc-800/80 bg-[#121214] overflow-hidden shadow-2xl ${
-              (showCode && mobileTab !== "preview") || mobileTab === "code"
-                ? "flex flex-col relative z-10"
-                : "hidden"
+              showCode ? "flex flex-col relative z-10" : "hidden"
             }`}
           >
-            {/* Mobile Code Editor Toolbar */}
-            <div className="lg:hidden flex items-center justify-between px-3.5 py-2 border-b border-zinc-800 bg-zinc-950 text-xs">
-              <span className="text-zinc-400 font-medium flex items-center gap-1.5">
-                <Code2 size={13} className="text-purple-400" />
-                Code Editor
+            {/* Code Editor Header */}
+            <div className="flex items-center justify-between px-3.5 py-2 border-b border-zinc-800 bg-zinc-950 text-xs">
+              <span className="text-zinc-300 font-medium flex items-center gap-2">
+                <Code2 size={14} className="text-purple-400" />
+                <span>HTML Code Editor</span>
               </span>
+
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-[11px] text-zinc-500 font-mono hidden sm:inline">
+                  {code ? `${code.length} characters` : "Empty"}
+                </span>
+
+                {/* Save Manual Edit Button */}
+                <button
+                  type="button"
+                  onClick={handleSaveManually}
+                  disabled={isSaving}
+                  title="Save manual code changes"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md transition-all active:scale-95 cursor-pointer ${
+                    saveSuccess
+                      ? "bg-emerald-600 text-white shadow-emerald-600/30"
+                      : "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700"
+                  } disabled:opacity-50`}
+                >
+                  {isSaving ? (
+                    <>
+                      <LoaderCircle size={13} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : saveSuccess ? (
+                    <>
+                      <Check size={13} className="text-emerald-200" />
+                      <span>Saved!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={13} />
+                      <span>Save Code</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Deploy Button with Deployed status & Dropdown Menu */}
+                <DeployButtonMenu
+                  id={id}
+                  isDeployed={isDeployed}
+                  isDeploying={isDeploying}
+                  onDeploy={handleDeploy}
+                  onOpenQr={() => setShowQrModal(true)}
+                  size="sm"
+                  align="right"
+                />
+              </div>
             </div>
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 w-full h-full">
               <MonacoEditor
                 height="100%"
+                width="100%"
                 language="html"
                 theme="vs-dark"
-                value={code}
+                value={code || ""}
                 onChange={(val) => setCode(val || "")}
                 options={{
-                  fontSize: 12,
+                  fontSize: 13,
                   minimap: { enabled: false },
                   wordWrap: "on",
                   scrollBeyondLastLine: false,
+                  automaticLayout: true,
                   smoothScrolling: true,
                   padding: { top: 12, bottom: 12 },
                   lineNumbersMinChars: 3,
@@ -566,9 +773,7 @@ export default function Editor() {
           {/* Live Preview Canvas Container */}
           <div
             className={`transition-all duration-300 flex-col items-center justify-center bg-white ${
-              (!showCode && mobileTab !== "code") || mobileTab === "preview"
-                ? "flex"
-                : "hidden"
+              !showCode ? "flex" : "hidden"
             } ${
               deviceView === "desktop"
                 ? "w-full h-full rounded-none"
@@ -578,6 +783,7 @@ export default function Editor() {
             }`}
           >
             <iframe
+              key={previewKey}
               ref={iframeRef}
               srcDoc={code}
               title="Website Preview"
@@ -587,6 +793,194 @@ export default function Editor() {
           </div>
         </div>
       </main>
+
+      {/* ========================================================
+          DEPLOYED SUCCESS MODAL
+      ======================================================== */}
+      {showDeployModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-zinc-900 border border-emerald-500/30 shadow-[0_20px_50px_rgba(16,185,129,0.15)] text-center relative overflow-hidden font-sans">
+            {/* Background Glow */}
+            <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowDeployModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-800 transition cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Celebratory Icon */}
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+              <Rocket size={26} className="animate-bounce" />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-1.5">
+              Website Deployed! 🚀
+            </h3>
+
+            <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
+              {deployedData?.message ||
+                deployedData?.msg ||
+                "Your website is now live and published to the web."}
+            </p>
+
+            {/* URL Box */}
+            <div className="p-3 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2 mb-5 text-left">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 mb-0.5">
+                  Public Live URL
+                </p>
+                <p className="text-xs text-zinc-200 truncate font-mono">
+                  {deployedData?.deployedUrl ||
+                    deployedData?.url ||
+                    `${window.location.origin}/live/${id}`}
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  const targetUrl =
+                    deployedData?.deployedUrl ||
+                    deployedData?.url ||
+                    `${window.location.origin}/live/${id}`;
+                  navigator.clipboard.writeText(targetUrl);
+                  setCopiedDeployUrl(true);
+                  setTimeout(() => setCopiedDeployUrl(false), 2000);
+                }}
+                className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer active:scale-95"
+                title="Copy Live URL"
+              >
+                {copiedDeployUrl ? (
+                  <Check size={14} className="text-emerald-400" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDeployModal(false)}
+                className="py-2.5 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 hover:text-white transition cursor-pointer active:scale-95"
+              >
+                Close
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowDeployModal(false);
+                  setShowQrModal(true);
+                }}
+                className="py-2.5 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-semibold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                title="View QR Code"
+              >
+                <QrCode size={13} />
+                <span>QR Code</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const targetUrl =
+                    deployedData?.deployedUrl ||
+                    deployedData?.url ||
+                    `/live/${id}`;
+                  window.open(targetUrl, "_blank");
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>Visit Site</span>
+                <ExternalLink size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          QR CODE MODAL
+      ======================================================== */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-sm p-6 rounded-3xl bg-[#121214] border border-purple-500/30 shadow-[0_25px_60px_-15px_rgba(168,85,247,0.2)] text-center relative overflow-hidden font-sans">
+            <div className="absolute -top-20 -right-20 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 p-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-800/60 hover:bg-zinc-800 transition cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header Icon */}
+            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/30">
+              <QrCode size={22} />
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-1">
+              Live Website QR Code
+            </h3>
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Scan with your phone camera to preview this site live on mobile
+            </p>
+
+            {/* QR Code Container */}
+            <div className="p-3.5 bg-white rounded-2xl inline-block mx-auto mb-4 shadow-2xl border border-zinc-200">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  `${window.location.origin}/live/${id}`
+                )}&margin=4`}
+                alt="Website QR Code"
+                className="w-44 h-44 rounded-lg block"
+              />
+            </div>
+
+            {/* Live URL with Copy */}
+            <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between gap-2 mb-4 text-left">
+              <p className="text-xs text-zinc-300 truncate font-mono flex-1">
+                {`${window.location.origin}/live/${id}`}
+              </p>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/live/${id}`);
+                  setCopiedDeployUrl(true);
+                  setTimeout(() => setCopiedDeployUrl(false), 2000);
+                }}
+                className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Copy Link"
+              >
+                {copiedDeployUrl ? (
+                  <Check size={14} className="text-emerald-400" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </button>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 hover:text-white transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  window.open(`/live/${id}`, "_blank");
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/25"
+              >
+                <span>Open Site</span>
+                <ExternalLink size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -627,16 +1021,203 @@ function SidebarHeader({ website, onBack }) {
 }
 
 // ========================================================
+// SUB-COMPONENT: DEPLOY BUTTON WITH DROPDOWN MENU
+// ========================================================
+function DeployButtonMenu({
+  id,
+  isDeployed,
+  isDeploying,
+  onDeploy,
+  onOpenQr,
+  size = "md",
+  align = "right",
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const liveUrl = `${window.location.origin}/live/${id}`;
+
+  const handleCopyLink = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(liveUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleOpenLive = (e) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    window.open(liveUrl, "_blank");
+  };
+
+  const handleQrClick = (e) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    onOpenQr?.();
+  };
+
+  const handleRedeploy = (e) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    onDeploy?.();
+  };
+
+  // If NOT deployed: render standard Deploy Live button
+  if (!isDeployed) {
+    return (
+      <button
+        type="button"
+        onClick={onDeploy}
+        disabled={isDeploying}
+        className={`flex items-center gap-1.5 rounded-xl font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer ${
+          size === "sm"
+            ? "px-2.5 py-1.5 text-xs bg-gradient-to-r from-emerald-600 to-teal-600 text-white"
+            : "px-3.5 py-1.5 text-xs bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:opacity-95 text-white"
+        }`}
+      >
+        {isDeploying ? (
+          <LoaderCircle size={size === "sm" ? 13 : 14} className="animate-spin text-white" />
+        ) : (
+          <Rocket size={size === "sm" ? 13 : 14} />
+        )}
+        <span>{isDeploying ? "Deploying..." : "Deploy Live"}</span>
+      </button>
+    );
+  }
+
+  // If DEPLOYED: render Deployed status button with Dropdown trigger
+  return (
+    <div className="relative inline-block" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`flex items-center gap-1.5 rounded-xl font-semibold border transition-all active:scale-95 cursor-pointer ${
+          isOpen
+            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-lg shadow-emerald-500/20"
+            : "bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-500/40 hover:border-emerald-400 text-emerald-300"
+        } ${size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3.5 py-1.5 text-xs"}`}
+      >
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Deployed</span>
+        <ChevronDown
+          size={13}
+          className={`text-emerald-400 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div
+          className={`absolute top-full mt-2 w-56 rounded-2xl bg-[#121214] border border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 ${
+            align === "left" ? "left-0" : "right-0"
+          }`}
+        >
+          {/* Header indicator */}
+          <div className="px-3 py-1.5 border-b border-zinc-800/80 mb-1 flex items-center justify-between text-[11px] text-zinc-400">
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
+              <Globe size={12} />
+              <span>Live on Web</span>
+            </span>
+            <span className="text-[10px] text-zinc-500 font-mono">Public</span>
+          </div>
+
+          {/* Option: Copy Link */}
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Link2 size={14} className="text-zinc-400" />
+              <span>{copied ? "Link Copied!" : "Copy Link"}</span>
+            </div>
+            {copied ? (
+              <Check size={14} className="text-emerald-400" />
+            ) : (
+              <Copy size={13} className="text-zinc-500" />
+            )}
+          </button>
+
+          {/* Option: View QR Code */}
+          <button
+            type="button"
+            onClick={handleQrClick}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
+          >
+            <QrCode size={14} className="text-purple-400" />
+            <span>QR Code</span>
+          </button>
+
+          {/* Option: Open Live Website */}
+          <button
+            type="button"
+            onClick={handleOpenLive}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <ExternalLink size={14} className="text-cyan-400" />
+              <span>Open Website</span>
+            </div>
+            <span className="text-[10px] text-zinc-500 font-mono">↗</span>
+          </button>
+
+          <div className="h-px bg-zinc-800 my-1" />
+
+          {/* Option: Re-deploy / Update */}
+          <button
+            type="button"
+            onClick={handleRedeploy}
+            disabled={isDeploying}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-emerald-400 hover:bg-emerald-500/10 transition cursor-pointer disabled:opacity-50"
+          >
+            {isDeploying ? (
+              <LoaderCircle size={14} className="animate-spin text-emerald-400" />
+            ) : (
+              <RotateCcw size={14} className="text-emerald-400" />
+            )}
+            <span>{isDeploying ? "Updating..." : "Update Live Site"}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ========================================================
 // SUB-COMPONENT: WORKSPACE TOOLBAR (Desktop)
 // ========================================================
 function WorkspaceToolbar({
+  id,
   showCode,
   setShowCode,
+  setMobileTab,
   deviceView,
   setDeviceView,
   onReload,
   onOpenNewTab,
   onDownload,
+  onSave,
+  isSaving,
+  saveSuccess,
+  onDeploy,
+  isDeploying,
+  isDeployed,
+  onOpenQr,
 }) {
   return (
     <div className="h-16 min-h-16 px-4 sm:px-6 flex items-center justify-between border-b border-zinc-800/80 bg-[#09090b] z-10">
@@ -644,7 +1225,10 @@ function WorkspaceToolbar({
       <div className="flex items-center gap-2">
         <div className="flex items-center p-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
           <button
-            onClick={() => setShowCode(false)}
+            onClick={() => {
+              setShowCode(false);
+              setMobileTab?.("preview");
+            }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
               !showCode
                 ? "bg-purple-600 text-white shadow-md shadow-purple-600/25"
@@ -656,7 +1240,10 @@ function WorkspaceToolbar({
           </button>
 
           <button
-            onClick={() => setShowCode(true)}
+            onClick={() => {
+              setShowCode(true);
+              setMobileTab?.("code");
+            }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 cursor-pointer ${
               showCode
                 ? "bg-purple-600 text-white shadow-md shadow-purple-600/25"
@@ -710,6 +1297,29 @@ function WorkspaceToolbar({
 
       {/* Right side: Action Buttons */}
       <div className="flex items-center gap-2">
+        {/* Save Code Button (shown when viewing Code Editor) */}
+        {showCode && (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+              saveSuccess
+                ? "bg-emerald-600 text-white shadow-emerald-600/25"
+                : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-600/25"
+            } disabled:opacity-50`}
+          >
+            {isSaving ? (
+              <LoaderCircle size={14} className="animate-spin" />
+            ) : saveSuccess ? (
+              <Check size={14} className="text-emerald-200" />
+            ) : (
+              <Save size={14} />
+            )}
+            <span>{isSaving ? "Saving..." : saveSuccess ? "Saved!" : "Save Code"}</span>
+          </button>
+        )}
+
         {/* Reload Preview Button */}
         {!showCode && (
           <button
@@ -739,15 +1349,16 @@ function WorkspaceToolbar({
           <span className="hidden sm:inline">Export HTML</span>
         </button>
 
-        {/* Deploy Live Button */}
-        <button
-          type="button"
-          onClick={() => alert("Deploy live feature coming soon!")}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:opacity-95 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          <Rocket size={14} />
-          <span>Deploy Live</span>
-        </button>
+        {/* Deploy Live / Deployed Button with Dropdown Menu */}
+        <DeployButtonMenu
+          id={id}
+          isDeployed={isDeployed}
+          isDeploying={isDeploying}
+          onDeploy={onDeploy}
+          onOpenQr={onOpenQr}
+          size="md"
+          align="right"
+        />
       </div>
     </div>
   );
